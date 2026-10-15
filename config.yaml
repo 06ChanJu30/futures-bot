@@ -1,12 +1,15 @@
 # ===== 선물 자동매매 봇 설정 (1단계: 백테스트 전용) =====
-# 이 파일만 고쳐서 거래소, 종목, 리스크 규칙을 바꿀 수 있어요.
+# 이 파일만 고쳐서 거래소, 종목, 리스크 규칙, 전략 후보를 바꿀 수 있어요.
 
 data:
   exchange: binance          # ccxt 거래소 id (binance, bybit, okx 등)
   symbol: BTC/USDT:USDT      # USDT 무기한 선물
-  timeframe: 1h
-  years: 3                   # 과거 몇 년치 받을지
+  timeframe: 1h              # 받아오는 원본 봉 (그대로 두세요)
+  years: 6                   # 과거 몇 년치 (길수록 검증 신뢰도 ↑). 바이낸스 BTC 선물은 2019년 9월부터 있음
   data_dir: data
+
+# 1시간봉을 묶어서 검증할 봉 주기. 1차 결과에서 1시간봉은 잡음·비용 때문에 불리했어요.
+timeframes: ["4h", "1d"]
 
 account:
   initial_equity: 1000       # 시작 자본 (USDT, 가상)
@@ -14,33 +17,58 @@ account:
 costs:
   taker_fee: 0.0005          # 0.05% (시장가 수수료, 진입·청산 각각)
   slippage_bps: 2            # 체결 미끄러짐 0.02%
-  default_funding_rate: 0.0001   # 펀딩비 데이터가 없을 때 8시간마다 0.01% 가정
+  default_funding_rate: 0.0001   # 펀딩비 데이터가 없는 기간에 8시간마다 0.01% 가정
   funding_hours_utc: [0, 8, 16]
 
 risk:
   leverage: 2                # 최대 레버리지 (포지션 금액 ≤ 자본 × 2)
-  risk_per_trade: 0.01       # 1회 거래 최대 손실 = 자본의 1% (손절 기준)
-  daily_max_loss: 0.03       # 하루 손실 3% 넘으면 그날은 청산 후 매매 중지 (UTC 기준)
-  max_drawdown_kill: 0.30    # 고점 대비 30% 잃으면 봇 완전 정지
+  sizing: vol_target         # vol_target: 목표 변동성에 맞춰 크기 조절 / risk: 손절 시 자본 N% 손실
+  target_vol: 0.40           # vol_target일 때 연 변동성 목표 40% (비트코인 자체는 보통 50~80%)
+  risk_per_trade: 0.01       # risk일 때 1회 거래 최대 손실 = 자본의 1%
+  trailing_stop: true        # 추적 손절 (수익 나면 손절선을 따라 올림)
+  daily_max_loss: 0.05       # 하루 손실 5% 넘으면 그날은 청산 후 매매 중지 (UTC 기준)
+  max_drawdown_kill: 0.30    # 고점 대비 30% 잃으면 봇 완전 정지 (전체 기간 기준)
   maintenance_margin: 0.005  # 유지증거금률 (청산가 계산용)
-  take_profit_r: null        # 익절 = 손절폭의 몇 배 (null이면 신호로만 청산)
+  take_profit_r: null        # 익절 = 손절폭의 몇 배 (null이면 신호/추적손절로만 청산)
+
+filters:
+  funding_z_max: null        # 예: 2.0 → 펀딩비 과열(롱 쏠림) 시 롱 회피. 근거가 약해서 기본 꺼짐
 
 walkforward:
-  train_months: 12           # 파라미터를 고르는 학습 구간
+  warmup_days: 150           # 지표 계산용으로 건너뛰는 기간
+  train_months: 12           # 설정을 고르는 학습 구간
   test_months: 3             # 처음 보는 데이터로 검증하는 구간
-  objective: sharpe          # 학습 구간에서 고르는 기준 (sharpe | return | calmar)
-  min_trades: 10             # 학습 구간 거래가 이보다 적으면 후보에서 제외
+  objective: sharpe          # 학습 구간에서 고르는 기준 (sharpe | total_return | calmar)
+  min_trades_per_year: 4     # 학습 구간 거래가 연 4회 비율보다 적으면 후보에서 제외
 
-# 전략별 탐색할 파라미터 후보 (조합 전부를 학습 구간에서 시험)
+# 모의매매 후보로 통과시킬 기준 (검증 구간 성적)
+verdict:
+  min_sharpe: 0.8
+  min_dsr: 0.90              # 여러 후보 중 고른 걸 감안해도 '운이 아닐 확률' 90% 이상
+  max_drawdown: 0.25
+  min_trades: 20
+
+# 전략별 탐색할 파라미터 후보 (기간은 '일' 단위). 후보가 많을수록 과최적화 위험 ↑
 strategies:
-  trend_ema:
-    fast: [20, 50]
-    slow: [100, 200]
-    atr_mult: [2.0, 3.0]
-  donchian_breakout:
-    lookback: [24, 48, 96]
-    atr_mult: [2.0, 3.0]
-  rsi_reversion:
-    rsi_len: [14]
-    oversold: [25, 30]
-    atr_mult: [1.5, 2.5]
+  tsmom_ensemble:            # 여러 기간 모멘텀 앙상블 (Grayscale·WisdomTree 연구 참고)
+    lookbacks: [[10, 30, 60], [20, 60, 120]]
+    short_mode: [none, consensus]
+    atr_mult: [3.0, 5.0]
+  trend_ema:                 # 이동평균 추세 (1차 테스트 전략을 일 단위로)
+    fast_days: [10, 20]
+    slow_days: [50, 100, 150]
+    atr_mult: [3.0, 5.0]
+    allow_short: [true, false]
+  trend_pullback:            # 상승 추세 속 눌림목 매수 (RSI 2)
+    trend_days: [50, 100]
+    entry_rsi: [10, 25]
+    exit_rsi: [70]
+    atr_mult: [2.5, 4.0]
+  donchian_breakout:         # 채널 돌파 (비교 기준용)
+    entry_days: [20, 55]
+    atr_mult: [3.0, 5.0]
+  ml_gbm:                    # 머신러닝 (FreqAI 방식 참고, 실험용)
+    horizon_days: [1, 3]
+    threshold: [0.03, 0.06]
+    atr_mult: [3.0]
+    allow_short: [true]
