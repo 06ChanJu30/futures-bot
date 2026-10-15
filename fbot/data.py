@@ -95,7 +95,8 @@ def load(cfg, synthetic=False):
         fund = None
         if fund_path.exists():
             f = pd.read_csv(fund_path)
-            fund = pd.Series(f["rate"].to_numpy(), index=pd.to_datetime(f["ts"], unit="ms", utc=True).floor("h"))
+            fidx = pd.DatetimeIndex(pd.to_datetime(f["ts"], unit="ms", utc=True)).floor("h")
+            fund = pd.Series(f["rate"].to_numpy(), index=fidx)
             fund = fund[~fund.index.duplicated()]
 
     c = cfg["costs"]
