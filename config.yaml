@@ -1,0 +1,46 @@
+# ===== 선물 자동매매 봇 설정 (1단계: 백테스트 전용) =====
+# 이 파일만 고쳐서 거래소, 종목, 리스크 규칙을 바꿀 수 있어요.
+
+data:
+  exchange: binance          # ccxt 거래소 id (binance, bybit, okx 등)
+  symbol: BTC/USDT:USDT      # USDT 무기한 선물
+  timeframe: 1h
+  years: 3                   # 과거 몇 년치 받을지
+  data_dir: data
+
+account:
+  initial_equity: 1000       # 시작 자본 (USDT, 가상)
+
+costs:
+  taker_fee: 0.0005          # 0.05% (시장가 수수료, 진입·청산 각각)
+  slippage_bps: 2            # 체결 미끄러짐 0.02%
+  default_funding_rate: 0.0001   # 펀딩비 데이터가 없을 때 8시간마다 0.01% 가정
+  funding_hours_utc: [0, 8, 16]
+
+risk:
+  leverage: 2                # 최대 레버리지 (포지션 금액 ≤ 자본 × 2)
+  risk_per_trade: 0.01       # 1회 거래 최대 손실 = 자본의 1% (손절 기준)
+  daily_max_loss: 0.03       # 하루 손실 3% 넘으면 그날은 청산 후 매매 중지 (UTC 기준)
+  max_drawdown_kill: 0.30    # 고점 대비 30% 잃으면 봇 완전 정지
+  maintenance_margin: 0.005  # 유지증거금률 (청산가 계산용)
+  take_profit_r: null        # 익절 = 손절폭의 몇 배 (null이면 신호로만 청산)
+
+walkforward:
+  train_months: 12           # 파라미터를 고르는 학습 구간
+  test_months: 3             # 처음 보는 데이터로 검증하는 구간
+  objective: sharpe          # 학습 구간에서 고르는 기준 (sharpe | return | calmar)
+  min_trades: 10             # 학습 구간 거래가 이보다 적으면 후보에서 제외
+
+# 전략별 탐색할 파라미터 후보 (조합 전부를 학습 구간에서 시험)
+strategies:
+  trend_ema:
+    fast: [20, 50]
+    slow: [100, 200]
+    atr_mult: [2.0, 3.0]
+  donchian_breakout:
+    lookback: [24, 48, 96]
+    atr_mult: [2.0, 3.0]
+  rsi_reversion:
+    rsi_len: [14]
+    oversold: [25, 30]
+    atr_mult: [1.5, 2.5]
