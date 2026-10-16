@@ -1,4 +1,8 @@
-# 선물 자동매매 봇 — 1단계: 백테스트
+# 선물 자동매매 봇
+
+> **처음 보거나 다른 컴퓨터에서 이어서 한다면 → [`HANDOFF.md`](HANDOFF.md)(작업지시서)부터.** 변경 이력은 [`CHANGELOG.md`](CHANGELOG.md).
+
+## 1단계: 백테스트
 
 과거 차트로 매매 전략을 검증하는 프로그램이에요. **실제 주문 기능은 없고, API 키도 필요 없어요.**
 
@@ -55,6 +59,7 @@ python robustness.py        # 후보 전략 견고성 검사 (다른 종목·주
 
 견고성 검사를 통과한 일봉 모멘텀 앙상블을 Freqtrade로 옮겨뒀어요. `freqtrade/GUIDE.md`를 따라 진행하세요.
 
+- 거래소 5곳 지원: binance · bybit · okx · bitget · gate (`python freqtrade/select_exchange.py 이름`)
 - `freqtrade/user_data/strategies/TsmomEnsemble.py` 전략 (고정 설정, 거래소 손절 주문, 일일 한도·비상정지)
 - `freqtrade/config.json` 모의매매 설정 / `config.live.example.json` 실거래 설정 예시
 - `freqtrade/docker-compose.yml` 모의매매 실행 / `docker-compose.live.yml` 실거래 실행

@@ -11,7 +11,7 @@ futures-bot 백테스트 엔진(fbot)의 tsmom_ensemble 전략을 Freqtrade로 �
 - 손절 = 진입가 - ATR(14)×5, 이후 매일 종가 - ATR×5 로 따라 올림 (내려가지 않음)
 - 손절당하면 신호가 한 번 꺼질 때까지 같은 방향 재진입 금지
 - 안전장치: 하루(UTC) 손실 5% → 그날 청산·매매 중지 / 고점 대비 30% → 영구 정지
-  (영구 정지 해제: user_data/kill_switch_state.json 삭제 후 재시작)
+  (영구 정지 해제: user_data/kill_switch_state.<거래소>.<dryrun|live>.json 삭제 후 재시작)
 """
 import json
 import logging
@@ -161,13 +161,16 @@ class TsmomEnsemble(IStrategy):
 
     # ---------------------------------------------------------------- 안전장치
     def bot_start(self, **kwargs) -> None:
-        self._state_path = Path(self.config["user_data_dir"]) / "kill_switch_state.json"
+        # 비상정지 상태는 거래소별·모의/실거래별로 따로 저장 (서로 영향 없음)
+        mode = "dryrun" if self.config.get("dry_run", True) else "live"
+        ex = self.config["exchange"]["name"]
+        self._state_path = Path(self.config["user_data_dir"]) / f"kill_switch_state.{ex}.{mode}.json"
         self._persist = self.dp.runmode in (RunMode.DRY_RUN, RunMode.LIVE)
         self._state = {"peak": None, "killed": False, "day": None, "day_start": None, "halted_day": None}
         if self._persist and self._state_path.exists():
             self._state.update(json.loads(self._state_path.read_text()))
             if self._state["killed"]:
-                logger.warning("⛔ 비상정지 상태로 시작합니다. 해제하려면 kill_switch_state.json 삭제 후 재시작")
+                logger.warning(f"⛔ 비상정지 상태로 시작합니다. 해제하려면 {self._state_path.name} 삭제 후 재시작")
 
     def _save(self):
         if self._persist:

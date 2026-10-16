@@ -5,12 +5,14 @@ services:
       - "./user_data:/freqtrade/user_data"
       - "./config.json:/freqtrade/config.json:ro"
       - "./config.private.json:/freqtrade/config.private.json:ro"
+      - "./exchanges:/freqtrade/exchanges:ro"
       - "./config.live.json:/freqtrade/config.live.json:ro"
     command: >
       trade
-      --logfile /freqtrade/user_data/logs/freqtrade.live.log
-      --db-url sqlite:////freqtrade/user_data/tradesv3.live.sqlite
+      --logfile /freqtrade/user_data/logs/freqtrade.${EXCHANGE:-binance}.live.log
+      --db-url sqlite:////freqtrade/user_data/tradesv3.${EXCHANGE:-binance}.live.sqlite
       --config /freqtrade/config.json
+      --config /freqtrade/exchanges/${EXCHANGE:-binance}.json
       --config /freqtrade/config.private.json
       --config /freqtrade/config.live.json
       --strategy TsmomEnsemble
