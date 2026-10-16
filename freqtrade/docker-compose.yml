@@ -1,0 +1,21 @@
+# Freqtrade (버전 고정: 검증한 2026.9)
+# 모의매매:  docker compose up -d
+# 실거래:    docker compose -f docker-compose.yml -f docker-compose.live.yml up -d
+services:
+  freqtrade:
+    image: freqtradeorg/freqtrade:2026.9
+    restart: unless-stopped
+    container_name: freqtrade
+    volumes:
+      - "./user_data:/freqtrade/user_data"
+      - "./config.json:/freqtrade/config.json:ro"
+      - "./config.private.json:/freqtrade/config.private.json:ro"
+    ports:
+      - "127.0.0.1:8080:8080"
+    command: >
+      trade
+      --logfile /freqtrade/user_data/logs/freqtrade.log
+      --db-url sqlite:////freqtrade/user_data/tradesv3.dryrun.sqlite
+      --config /freqtrade/config.json
+      --config /freqtrade/config.private.json
+      --strategy TsmomEnsemble

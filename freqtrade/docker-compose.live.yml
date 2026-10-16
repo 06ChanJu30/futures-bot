@@ -1,0 +1,16 @@
+# 실거래 전용 덮어쓰기 (config.live.json 이 있어야 함, 깃허브에 올라가지 않음)
+services:
+  freqtrade:
+    volumes:
+      - "./user_data:/freqtrade/user_data"
+      - "./config.json:/freqtrade/config.json:ro"
+      - "./config.private.json:/freqtrade/config.private.json:ro"
+      - "./config.live.json:/freqtrade/config.live.json:ro"
+    command: >
+      trade
+      --logfile /freqtrade/user_data/logs/freqtrade.live.log
+      --db-url sqlite:////freqtrade/user_data/tradesv3.live.sqlite
+      --config /freqtrade/config.json
+      --config /freqtrade/config.private.json
+      --config /freqtrade/config.live.json
+      --strategy TsmomEnsemble

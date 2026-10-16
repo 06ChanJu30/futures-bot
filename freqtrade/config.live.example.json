@@ -1,0 +1,10 @@
+{
+    "dry_run": false,
+    "exchange": {
+        "name": "binance",
+        "key": "여기에_API_KEY",
+        "secret": "여기에_API_SECRET",
+        "pair_whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT"]
+    },
+    "telegram": {"enabled": true, "token": "여기에_텔레그램_봇_토큰", "chat_id": "여기에_chat_id"}
+}

@@ -51,6 +51,10 @@ python robustness.py        # 후보 전략 견고성 검사 (다른 종목·주
 - 추적 손절 (ATR 기준), 강제청산 계산
 - 하루 손실 5% → 그날 중지 / 고점 대비 30% 손실 → 완전 정지 (전체 기간 기준)
 
-## 다음 단계 (계획)
+## 2단계: 모의매매 → 실거래 (Freqtrade)
 
-통과한 전략이 나오면, 실시간 모의매매·실거래는 직접 만들지 않고 검증된 오픈소스 **Freqtrade**에 전략을 옮겨서 진행할 예정이에요 (선물 지원, 모의매매(dry-run), 텔레그램 알림, 미래참조 검사 기능 내장).
+견고성 검사를 통과한 일봉 모멘텀 앙상블을 Freqtrade로 옮겨뒀어요. `freqtrade/GUIDE.md`를 따라 진행하세요.
+
+- `freqtrade/user_data/strategies/TsmomEnsemble.py` 전략 (고정 설정, 거래소 손절 주문, 일일 한도·비상정지)
+- `freqtrade/config.json` 모의매매 설정 / `config.live.example.json` 실거래 설정 예시
+- `freqtrade/docker-compose.yml` 모의매매 실행 / `docker-compose.live.yml` 실거래 실행
