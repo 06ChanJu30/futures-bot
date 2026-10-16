@@ -14,7 +14,10 @@ pip install -r requirements.txt
 python fetch_data.py        # 과거 시세·펀딩비 다운로드 (설정: 6년치). 다시 실행하면 모자란 부분만 받음
 python check_lookahead.py   # (선택) 전략들이 미래 데이터를 엿보지 않는지 검사
 python run_backtest.py      # 전략 검증 → reports/날짜_시간/ 에 결과 저장
+python robustness.py        # 후보 전략 견고성 검사 (다른 종목·주변 설정·비용 스트레스)
 ```
+
+`robustness.py`는 ETH·SOL·BNB·XRP 데이터가 없으면 자동으로 받아요 (처음엔 몇 분).
 
 - `report.md` 결론·순위·비용 분석·과최적화 점검, `equity_4h.png`/`equity_1d.png` 자산 곡선
 - `details.md` 구간별 선택 설정, `trades_*.csv` 거래 내역
