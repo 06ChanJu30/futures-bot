@@ -13,7 +13,7 @@ costs:
   majors: [BTC, ETH]
 
 sizing:
-  start_equity: 1000         # 가상 시작 자본 (USDT)
+  start_equity: 700          # 가상 시작 자본 (USDT) ≈ 100만 원 (사용자 운용 예정 금액)
   margin_per_trade: 0.10     # 거래 1건당 증거금 = 자본의 10%
   max_leverage: 3            # 시그널 레버리지를 따르되 최대 3배로 제한
                              # (시그널은 3~10배를 쓰지만, 따라 하는 쪽은 지연 때문에 불리해서 낮게)
@@ -40,7 +40,8 @@ levia:
   taker_fee: 0.0005          # 시장가(손절·즉시체결) 수수료
   slippage: 0.0002           # 시장가 체결 미끄러짐
   maintenance_margin: 0.005
-  start_equity: 1000
+  start_equity: 700          # ≈ 100만 원 (사용자 운용 예정 금액)
+  sides: [long, short]       # 롱·숏 모두 매매 (사용자 결정 2026-10-27)
   # 가이드북 기본 사례 (리포트 맨 위에 표시)
   base: {stop_seed: 0.05, tp_ratio: 1.0, on_opposite: cancel_pending, cross_ref: false}
   # 비교할 조합 (가이드북이 정하지 않았거나 범위로만 준 부분)

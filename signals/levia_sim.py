@@ -320,8 +320,10 @@ def main():
     for sym in targets:
         print(f"{sym} 1분봉 준비 중 ({t_first:%m-%d} ~ {t_end:%m-%d})...")
         bars = get_bars(prices, f"{sym}/USDT:USDT", t_first, t_end)
-        own = to_alerts(by_sym[sym], C["delay_sec"])
-        alts = [a for x, ss in by_sym.items() if x != sym for a in to_alerts(ss, C["delay_sec"])]
+        sides = {"long": 1, "short": -1}
+        allowed = {sides[x] for x in C.get("sides", ["long", "short"])}
+        own = [a for a in to_alerts(by_sym[sym], C["delay_sec"]) if a.side in allowed]
+        alts = [a for x, ss in by_sym.items() if x != sym for a in to_alerts(ss, C["delay_sec"]) if a.side in allowed]
         cross = [Alert(a.t, a.side, None, None, "cross:" + a.src) for a in alts]
         for P in combos:
             al = own + (cross if P["cross_ref"] else [])
