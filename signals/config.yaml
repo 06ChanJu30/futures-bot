@@ -22,3 +22,30 @@ sizing:
 # 봇 자체 보호 손절 후보 (진입가 대비 가격 변동 %). 각각 썼다면 어땠을지 비교해요.
 # 시그널 종료보다 먼저 걸리면 손해일 수 있어서, 너무 좁지 않은 값을 찾는 게 목적이에요.
 stop_candidates: [null, 0.02, 0.03, 0.05, 0.08]
+
+# ===== LEVIA 코어 알림 + 가이드북 규칙 시뮬레이션 (levia_sim.py) =====
+levia:
+  symbols: [BTC]             # 가이드북: 비트코인만 거래
+  also_test_alts: true       # 참고용: 알트 알림에도 같은 규칙을 적용한 결과를 따로 표시
+  leverage: 10               # 가이드북: 10배 고정
+  full_position_margin: 1.0  # 100% 진입 시 증거금 = 거래 자본의 몇 배 (1.0 = 전액. 가이드북 '작은 시드'로 전액 사용 가정)
+  first_entry: 0.5           # 1차 진입 50%
+  add_when_better: true      # 새 같은 방향 알림 기준가가 평단보다 유리하면 2차 진입(나머지 50%)
+  delay_sec: 10              # 알림을 받고 주문이 들어가기까지 (초)
+  order_max_hours: 24        # 미체결 지정가 주문을 최대 몇 시간 유지할지 (가이드북에 없음 → 가정)
+  max_hold_hours: 72         # 익절·손절 모두 안 닿으면 몇 시간 뒤 정리할지 (가이드북에 없음 → 안전장치)
+  consecutive_stop_limit: 2  # 2회 연속 손절이면 그날(KST) 매매 종료
+  withdraw_ratio: 0.5        # 익절 수익의 50% 출금
+  maker_fee: 0.0002          # 지정가 체결 수수료
+  taker_fee: 0.0005          # 시장가(손절·즉시체결) 수수료
+  slippage: 0.0002           # 시장가 체결 미끄러짐
+  maintenance_margin: 0.005
+  start_equity: 1000
+  # 가이드북 기본 사례 (리포트 맨 위에 표시)
+  base: {stop_seed: 0.05, tp_ratio: 1.0, on_opposite: cancel_pending, cross_ref: false}
+  # 비교할 조합 (가이드북이 정하지 않았거나 범위로만 준 부분)
+  grid:
+    stop_seed: [0.02, 0.03, 0.05, 0.08]        # 손절: 시드 대비 -2~-8%
+    tp_ratio: [1.0, 1.5, 2.0]                  # 익절 = 손절폭 × 배수 (손익비 1:1 이상)
+    on_opposite: [ignore, cancel_pending, close]  # 반대 알림이 오면: 무시 / 미체결만 취소 / 포지션도 청산
+    cross_ref: [false, true]                   # 알트 알림을 BTC 알림으로 간주 (가이드북 8번, 실험)

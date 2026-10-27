@@ -21,7 +21,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sigparse import KST, Signal, parse  # noqa: E402
 
 OUT = Path(__file__).resolve().parent / "data" / "signals.csv"
-FIELDS = ["ts", "kind", "side", "symbol", "pair", "price", "leverage", "reported_return", "entry_time", "msg_id", "raw"]
+FIELDS = ["ts", "kind", "side", "symbol", "pair", "price", "leverage", "reported_return", "entry_time",
+          "levels", "calc_time", "source", "msg_id", "raw"]
 
 
 def _text(t):
@@ -37,7 +38,7 @@ def from_json(path):
             continue
         ts = datetime.fromtimestamp(int(m["date_unixtime"]), timezone.utc) if "date_unixtime" in m \
             else datetime.fromisoformat(m["date"]).replace(tzinfo=KST)
-        s = parse(_text(m.get("text", "")), ts, m.get("id"))
+        s = parse(_text(m.get("text", "")), ts, m.get("id"), m.get("from"))
         if s:
             yield s
 
@@ -46,11 +47,11 @@ RE_LINE = re.compile(r"^\[(\d{4})-(\d{2})-(\d{2})\s+(오전|오후|AM|PM)?\s*(\d
 
 
 def from_txt(path):
-    cur, buf = None, []
+    cur, buf, sender = None, [], None
 
     def flush():
         if cur:
-            s = parse("\n".join(buf), cur)
+            s = parse("\n".join(buf), cur, source=sender)
             if s:
                 yield s
 
@@ -66,6 +67,7 @@ def from_txt(path):
                 h = 0
             cur = datetime(int(y), int(mo), int(d), h, int(mi), int(se or 0), tzinfo=KST)
             buf = [m.group(9)]
+            sender = m.group(8).strip()
         else:
             buf.append(line)
     yield from flush()
@@ -74,7 +76,8 @@ def from_txt(path):
 def _key(r):
     """중복 판단 기준: 같은 분 + 종목 + 오픈/종료 + 방향 (+ 해석 못 한 메시지는 내용)"""
     minute = datetime.fromisoformat(r["ts"]).strftime("%Y-%m-%dT%H:%M")
-    return (minute, r["pair"], r["kind"], r["side"], r["raw"][:80] if r["kind"] == "unknown" else "")
+    extra = r["raw"][:80] if r["kind"] == "unknown" else (str(r["price"]) if r["kind"] == "alert" else "")
+    return (minute, r["pair"], r["kind"], r["side"], extra)
 
 
 def save(signals: list[Signal], path=OUT, append=False):
@@ -100,6 +103,10 @@ def save(signals: list[Signal], path=OUT, append=False):
     return len(rows)
 
 
+def _dt(v):
+    return datetime.fromisoformat(v) if v not in (None, "", "None") else None
+
+
 def load(path=OUT) -> list[Signal]:
     out = []
     if not path.exists():
@@ -111,8 +118,9 @@ def load(path=OUT) -> list[Signal]:
                 ts=datetime.fromisoformat(r["ts"]), kind=r["kind"], side=r["side"] or None,
                 symbol=r["symbol"] or None, pair=r["pair"] or None, price=num("price"),
                 leverage=num("leverage"), reported_return=num("reported_return"),
-                entry_time=datetime.fromisoformat(r["entry_time"]) if r.get("entry_time") not in (None, "", "None") else None,
-                msg_id=r.get("msg_id"), raw=r.get("raw", "")))
+                entry_time=_dt(r.get("entry_time")), calc_time=_dt(r.get("calc_time")),
+                levels=[float(x) for x in r["levels"].split(";")] if r.get("levels") not in (None, "", "None") else None,
+                source=r.get("source") or None, msg_id=r.get("msg_id"), raw=r.get("raw", "")))
     return out
 
 

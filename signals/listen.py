@@ -7,7 +7,7 @@
   3) pip install telethon
 
 사용
-  python signals/listen.py --list              # 내 대화방 목록 → 시그널 방의 ID 확인
+  python signals/listen.py --list              # 내 대화방 목록 → 시그널 방의 ID 확인 (여러 방은 쉼표로)
   python signals/listen.py --history 90        # 지난 90일 메시지를 한 번에 가져와 저장 (내보내기 대신)
   python signals/listen.py                     # 실시간 기록 시작 (Ctrl+C로 종료)
 
@@ -44,11 +44,12 @@ def read_env():
     return vals
 
 
-def chat_ref(v):
-    v = (v or "").strip()
-    if not v:
+def chat_refs(v):
+    """CHAT=방ID1,방ID2,... (여러 방 동시 기록)"""
+    items = [x.strip() for x in (v or "").split(",") if x.strip()]
+    if not items:
         sys.exit("telegram.env 의 CHAT 에 방 ID를 넣어주세요. (python signals/listen.py --list 로 확인)")
-    return int(v) if v.lstrip("-").isdigit() else v
+    return [int(x) if x.lstrip("-").isdigit() else x for x in items]
 
 
 def log(msg):
@@ -69,17 +70,22 @@ async def run(args):
             print(f"{d.id:>16}  {d.name}")
         return
 
-    chat = await client.get_entity(chat_ref(env.get("CHAT")))
-    log(f"대상 방: {getattr(chat, 'title', chat)}")
+    chats = [await client.get_entity(c) for c in chat_refs(env.get("CHAT"))]
+    from telethon.utils import get_peer_id
+    names = {get_peer_id(c): getattr(c, "title", None) or getattr(c, "first_name", "") for c in chats}
+    log("대상 방: " + ", ".join(names.values()))
 
     def handle(msg, quiet=False):
-        s = parse(msg.message or "", msg.date, msg.id)
+        src = names.get(msg.chat_id)
+        s = parse(msg.message or "", msg.date, msg.id, src)
         if s is None:
             return None
         save([s], append=True)
         if not quiet:
             if s.kind == "unknown":
                 log(f"⚠️ 형식을 못 읽은 메시지 (id {msg.id}) — 기록만 해둠")
+            elif s.kind == "alert":
+                log(f"🚨 LEVIA {s.symbol} {'L' if s.side == 'long' else 'S'} 기준가 {s.price} 중단선 {s.levels}")
             else:
                 extra = f" 수익률 {s.reported_return}%" if s.reported_return is not None else ""
                 log(f"{'🟢' if s.kind == 'open' else '🎯'} {s.symbol} {s.side} {s.kind} {s.price} x{s.leverage}{extra}")
@@ -92,14 +98,15 @@ async def run(args):
         prev = load()
         since = max((s.ts for s in prev), default=datetime.now(timezone.utc) - timedelta(days=1))
     n = 0
-    async for msg in client.iter_messages(chat, reverse=True, offset_date=since):
-        if handle(msg, quiet=True):
-            n += 1
+    for chat in chats:
+        async for msg in client.iter_messages(chat, reverse=True, offset_date=since):
+            if handle(msg, quiet=True):
+                n += 1
     log(f"{since:%Y-%m-%d %H:%M} UTC 이후 메시지 {n}개 저장 → {OUT}")
     if args.history:
         return
 
-    @client.on(events.NewMessage(chats=chat))
+    @client.on(events.NewMessage(chats=chats))
     async def on_new(event):
         handle(event.message)
 

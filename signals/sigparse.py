@@ -13,6 +13,17 @@
     ⚡️레버리지 : 5배
     📈 실현 수익률 : 5.00%
 
+LEVIA 코어 알림 형식 (종료 신호 없음 → levia_sim.py가 가이드북 규칙으로 청산):
+    🚨 LEVIA | XXX 🚨
+    📊 거래소: Binance
+    🤑 심볼: XXXUSDT
+    📍 유형: 🟢 L 🟢          (또는 🔴 S 🔴)
+    📌 기준가
+    1.000 USDT
+    📊 주요 중단선            (또는 📉 신호발생 저점)
+    1.010 USDT (+1.00%)
+    🕒 계산 기준: 2026-01-01 12:00:00 KST
+
 형식이 조금 달라도(이모지·띄어쓰기·'롱/숏/Long/Short') 최대한 읽도록 느슨하게 맞춥니다.
 처음 보는 형식은 kind='unknown'으로 남겨서 나중에 확인할 수 있게 해요.
 """
@@ -30,6 +41,12 @@ RE_ENTRY = re.compile(r"진입\s*가격\s*[:：]\s*" + _NUM)
 RE_EXIT = re.compile(r"종료\s*가격\s*[:：]\s*" + _NUM)
 RE_LEV = re.compile(r"레버리지\s*[:：]\s*" + _NUM + r"\s*배")
 RE_RET = re.compile(r"수익률\s*[:：]\s*" + _NUM + r"\s*%")
+RE_LEVIA = re.compile(r"LEVIA\s*\|\s*([A-Z0-9]+)", re.I)
+RE_TYPE = re.compile(r"유형\s*[:：][^LS\n]*\b([LS])\b")
+RE_BASE = re.compile(r"기준가\s*[:：]?\s*\n?\s*" + _NUM + r"\s*USDT")
+RE_LEVEL_BLOCK = re.compile(r"(?:주요\s*중단선|신호\s*발생\s*(?:저점|고점))\s*\n((?:\s*[-+]?\d[\d,]*\.?\d*\s*USDT[^\n]*\n?)+)")
+RE_LEVEL = re.compile(_NUM + r"\s*USDT")
+RE_CALC = re.compile(r"계산\s*기준\s*[:：]\s*(\d{4}-\d{2}-\d{2})\s+(\d{1,2}:\d{2}:\d{2})\s*(KST|UTC)?")
 RE_TIME = re.compile(r"진입\s*시각\s*[:：]\s*(\d{1,2}):(\d{2}):(\d{2})\s*(?:UTC\s*([+-]\d+))?")
 
 
@@ -40,7 +57,7 @@ def _f(m):
 @dataclass
 class Signal:
     ts: datetime                 # 메시지가 올라온 시각 (UTC)
-    kind: str                    # open | close | unknown
+    kind: str                    # open | close | alert(LEVIA) | unknown
     side: str | None = None      # long | short
     symbol: str | None = None    # 기준 코인 (예: ADA)
     pair: str | None = None      # ccxt 선물 표기 (예: ADA/USDT:USDT)
@@ -48,31 +65,70 @@ class Signal:
     leverage: float | None = None
     reported_return: float | None = None  # 시그널이 말한 실현 수익률 (레버리지 반영, %)
     entry_time: datetime | None = None    # 시그널에 적힌 진입시각 (UTC)
+    levels: list | None = None            # LEVIA 주요 중단선 / 신호발생 저점
+    calc_time: datetime | None = None     # LEVIA 계산 기준 시각 (UTC)
+    source: str | None = None             # 보낸 채널/봇 이름
     msg_id: int | str | None = None
     raw: str = field(default="", repr=False)
 
+    @property
+    def signal_time(self):
+        """실제로 행동할 수 있는 시각 = 메시지 시각과 계산 기준 시각 중 늦은 쪽"""
+        return max(t for t in (self.ts, self.calc_time) if t is not None)
+
+    @property
+    def cancel_level(self):
+        """LEVIA: 체결 전에 닿으면 진입을 포기하는 '마지막 중단선' (롱=가장 높은 선, 숏=가장 낮은 선)"""
+        if not self.levels:
+            return None
+        return max(self.levels) if self.side == "long" else min(self.levels)
+
     def to_dict(self):
         d = asdict(self)
-        for k in ("ts", "entry_time"):
+        d["levels"] = ";".join(repr(float(x)) for x in self.levels) if self.levels else None
+        for k in ("ts", "entry_time", "calc_time"):
             if d[k] is not None:
                 d[k] = d[k].isoformat()
         return d
 
 
-def parse(text: str, ts: datetime, msg_id=None) -> Signal | None:
+def parse_levia(text: str, ts: datetime, msg_id=None, source=None) -> Signal:
+    sym = RE_LEVIA.search(text)
+    typ = RE_TYPE.search(text)
+    base = RE_BASE.search(text)
+    if not (sym and typ and base):
+        return Signal(ts=ts, kind="unknown", msg_id=msg_id, source=source, raw=text)
+    coin = sym.group(1).upper()
+    levels = []
+    blk = RE_LEVEL_BLOCK.search(text)
+    if blk:
+        levels = [float(m.group(1).replace(",", "")) for m in RE_LEVEL.finditer(blk.group(1))]
+    calc = None
+    c = RE_CALC.search(text)
+    if c:
+        tz = timezone.utc if (c.group(3) or "").upper() == "UTC" else KST
+        calc = datetime.fromisoformat(f"{c.group(1)}T{c.group(2)}").replace(tzinfo=tz).astimezone(timezone.utc)
+    return Signal(ts=ts, kind="alert", side="long" if typ.group(1).upper() == "L" else "short",
+                  symbol=coin, pair=f"{coin}/USDT:USDT", price=_f(base), levels=levels or None,
+                  calc_time=calc, msg_id=msg_id, source=source, raw=text)
+
+
+def parse(text: str, ts: datetime, msg_id=None, source=None) -> Signal | None:
     """메시지 하나를 해석. 시그널과 무관한 메시지면 None."""
     if not text or "심볼" not in text:
         return None
     ts = ts.astimezone(timezone.utc)
+    if RE_LEVIA.search(text) or "유형" in text:
+        return parse_levia(text, ts, msg_id, source)
     head = RE_HEAD.search(text)
     sym = RE_SYMBOL.search(text)
     if not head or not sym:
-        return Signal(ts=ts, kind="unknown", msg_id=msg_id, raw=text)
+        return Signal(ts=ts, kind="unknown", msg_id=msg_id, source=source, raw=text)
     side = "long" if head.group(1).lower() in ("롱", "long") else "short"
     kind = "open" if head.group(2).lower() in ("오픈", "진입", "open") else "close"
     base = sym.group(1).upper()
     s = Signal(ts=ts, kind=kind, side=side, symbol=base, pair=f"{base}/USDT:USDT",
-               leverage=_f(RE_LEV.search(text)), msg_id=msg_id, raw=text)
+               leverage=_f(RE_LEV.search(text)), msg_id=msg_id, source=source, raw=text)
     if kind == "open":
         s.price = _f(RE_ENTRY.search(text))
         t = RE_TIME.search(text)

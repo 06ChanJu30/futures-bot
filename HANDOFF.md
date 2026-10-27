@@ -1,11 +1,11 @@
 # 작업지시서 — 노트북에서 이어서 하기
 
-마지막 업데이트: 2026-10-27 (v0.7). 바뀐 내용은 `CHANGELOG.md` 참고.
+마지막 업데이트: 2026-10-27 (v0.8). 바뀐 내용은 `CHANGELOG.md` 참고.
 
 ## 지금까지 한 일 (한 줄 요약)
 과거 데이터로 전략 10여 개를 검증 → **일봉 모멘텀 앙상블(10·30·60일)** 하나가 견고성 검사 통과 →
 Freqtrade로 옮겨서 **모의매매 직전 상태**. 거래소 5곳(binance·bybit·okx·bitget·gate) 중 골라서 쓸 수 있음.
-**별도 트랙**: 텔레그램 방 시그널(LevyBot) 따라하기 — 1단계 기록·채점 도구 완성, 데이터 모으는 중.
+**별도 트랙**: 텔레그램 시그널 — ① LevyBot(방장 포지션 오픈·종료) 따라하기 채점 ② LEVIA 코어 알림(L/S·기준가·중단선) × 서포터 가이드북 규칙 시뮬레이션. 도구 완성, 실제 데이터 넣어서 채점할 차례.
 
 거래소 조사 결론(10/16): 모의매매는 binance(기본값), 실거래는 binance 1순위·OKX 예비.
 실거래 전 확인: ① 계정에서 USDT 무기한 선물 주문 가능 ② 해외 거래소로 실제 송금 가능 (국내 거래소 출금 제한 강화).
@@ -25,7 +25,7 @@ Freqtrade로 옮겨서 **모의매매 직전 상태**. 거래소 5곳(binance·b
 
 | 단계 | 상태 |
 |---|---|
-| S1. 기록·채점 도구 | ✅ 완료 (예시 메시지·가짜 시세로 검증) |
+| S1. 기록·채점 도구 (LevyBot `score.py`, LEVIA `levia_sim.py`) | ✅ 완료 (예시 메시지·가짜 시세·규칙 테스트 15개로 검증) |
 | S2. **과거 대화 가져와서 채점** | ⬜ **← 여기부터** (아래 C-6) |
 | S3. 실시간 기록 3~4주 (60~100건) | ⬜ |
 | S4. 성적 통과 시 Freqtrade 연결 → 모의매매 | ⬜ (아직 안 만듦) |
@@ -96,12 +96,13 @@ docker compose up -d
 
 ### C-6. 텔레그램 시그널 채점 (시그널 트랙)
 ```
-python signals/importer.py result.json경로
-python signals/score.py
+python signals/importer.py result.json경로     (방마다: LevyBot 방, Levia Core BTC 방, AltCoin 방)
+python signals/score.py                        (LevyBot)
+python signals/levia_sim.py                    (LEVIA 알림 × 가이드북 규칙)
 ```
 - `result.json`: 텔레그램 데스크톱 → 방 → ⋮ → Export chat history (JSON, 사진 제외)
 - 또는 실시간 기록: `signals/telegram.env` 작성 후 `python signals/listen.py --list` → `--history 90` → `python signals/listen.py`
-- `reports/signals_날짜/report.md` 를 Claude에게 보여주고 판단 기준(signals/README.md) 체크
+- `reports/signals_날짜/report.md`, `reports/levia_날짜/report.md` 를 Claude에게 보여주고 판단 기준(signals/README.md) 체크
 
 ---
 

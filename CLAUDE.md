@@ -9,7 +9,9 @@
 ## 현재 상태 → `HANDOFF.md` (작업지시서), 변경 이력 → `CHANGELOG.md`
 - 채택 전략: **일봉 모멘텀 앙상블** `tsmom_ensemble(lookbacks=[10,30,60], short_mode="none", atr_mult=5.0)`
 - 다음 할 일: 노트북에 Freqtrade 설치 → 실제 데이터 교차 확인 → 모의매매 2~3개월
-- 별도 트랙: 텔레그램 시그널(LevyBot 형식) 따라하기 — `signals/` 1단계(기록·채점)만 있음, 매매 연결은 아직 없음
+- 별도 트랙: 텔레그램 시그널 — `signals/` 1단계(기록·채점)만 있음, 매매 연결은 아직 없음
+  - ① LevyBot: 방장 포지션 오픈·종료 → `score.py` ② LEVIA 코어: L/S·기준가·중단선(종료 없음) → `levia_sim.py`가 서포터 가이드북 규칙으로 시뮬레이션
+  - 가이드북 규칙을 바꾸면 `tools/test_levia_sim.py`도 같이 고치고 통과 확인
   - 시그널 보고 수익률 = 가격 변동 × 레버리지 (수수료 미포함). 따라하기 성적은 반드시 지연·수수료 반영해서 판단
   - 채점 통과(60~100건, 실제 따라하기 PF 1.3+, 가격 검증 OK) 전에는 실거래 연결을 만들지 말 것
 
@@ -41,6 +43,8 @@ python robustness.py --synthetic
 python check_lookahead.py --synthetic
 pip install freqtrade && python tools/ft_offline_test.py   # Freqtrade 전략 + 5개 거래소 설정
 python signals/score.py --demo            # 시그널 채점 (가짜 시그널·시세)
+python tools/test_levia_sim.py            # 가이드북 규칙 검증 15개
+python signals/levia_sim.py --demo        # LEVIA 시뮬레이션 데모
 ```
 실제 데이터는 `python fetch_data.py`(바이낸스 공개 API, 키 불필요)로 받음.
 
