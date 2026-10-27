@@ -63,3 +63,7 @@ python robustness.py        # 후보 전략 견고성 검사 (다른 종목·주
 - `freqtrade/user_data/strategies/TsmomEnsemble.py` 전략 (고정 설정, 거래소 손절 주문, 일일 한도·비상정지)
 - `freqtrade/config.json` 모의매매 설정 / `config.live.example.json` 실거래 설정 예시
 - `freqtrade/docker-compose.yml` 모의매매 실행 / `docker-compose.live.yml` 실거래 실행
+
+## 별도 트랙: 텔레그램 시그널 따라하기
+
+텔레그램 방의 롱/숏 진입·종료 시그널을 기록하고 '실제로 따라 했으면' 성적을 계산해요 (매매 없음). → [`signals/README.md`](signals/README.md)

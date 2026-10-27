@@ -9,6 +9,9 @@
 ## 현재 상태 → `HANDOFF.md` (작업지시서), 변경 이력 → `CHANGELOG.md`
 - 채택 전략: **일봉 모멘텀 앙상블** `tsmom_ensemble(lookbacks=[10,30,60], short_mode="none", atr_mult=5.0)`
 - 다음 할 일: 노트북에 Freqtrade 설치 → 실제 데이터 교차 확인 → 모의매매 2~3개월
+- 별도 트랙: 텔레그램 시그널(LevyBot 형식) 따라하기 — `signals/` 1단계(기록·채점)만 있음, 매매 연결은 아직 없음
+  - 시그널 보고 수익률 = 가격 변동 × 레버리지 (수수료 미포함). 따라하기 성적은 반드시 지연·수수료 반영해서 판단
+  - 채점 통과(60~100건, 실제 따라하기 PF 1.3+, 가격 검증 OK) 전에는 실거래 연결을 만들지 말 것
 
 ## 구조
 | 경로 | 내용 |
@@ -20,13 +23,15 @@
 | `config.yaml` | fbot 설정 (거래소·비용·리스크·전략 후보) |
 | `freqtrade/` | 실운영: `TsmomEnsemble.py` 전략, `config.json`, `exchanges/*.json`, Docker, `GUIDE.md` |
 | `tools/ft_offline_test.py` | 거래소 접속 없이 5개 거래소 설정으로 Freqtrade 백테스트 (가짜 데이터) |
+| `signals/` | 텔레그램 시그널: `sigparse.py` 해석, `importer.py` 가져오기, `listen.py` 실시간 기록(Telethon), `score.py` 채점, `config.yaml` |
 | `RESEARCH.md` | 조사 내용·출처 |
 
 ## 지켜야 할 것
 - **채택 전략의 설정을 바꾸지 말 것.** 바꾸려면 사용자에게 과최적화 위험을 설명하고 fbot에서 워크포워드+견고성 검사부터 다시
 - `fbot/strategies.py`의 `tsmom_ensemble`과 `freqtrade/.../TsmomEnsemble.py`는 **같은 규칙**이어야 함. 한쪽을 고치면 다른 쪽도 고치고 `tools/ft_offline_test.py`로 확인
 - 신호는 봉 마감 후 계산 → 다음 봉 시가 체결 (미래 참조 금지). 수정 후 `check_lookahead.py` 실행
-- 비밀정보 파일(`config.private.json`, `config.live.json`, `.env`)과 `user_data/` 기록은 커밋 금지 (.gitignore 있음)
+- 비밀정보 파일(`config.private.json`, `config.live.json`, `.env`, `signals/telegram.env`, 텔레그램 세션)과 `user_data/`·`signals/data/` 기록은 커밋 금지 (.gitignore 있음)
+- 사용자가 공유한 시그널 방 메시지 원문은 저장소에 커밋하지 말 것 (테스트는 가짜 데이터로)
 - 커밋 메시지는 한국어, 변경 시 `CHANGELOG.md`와 필요하면 `HANDOFF.md` 갱신
 
 ## 검증 방법
@@ -35,6 +40,7 @@ python run_backtest.py --synthetic        # fbot 동작 확인 (가짜 데이터
 python robustness.py --synthetic
 python check_lookahead.py --synthetic
 pip install freqtrade && python tools/ft_offline_test.py   # Freqtrade 전략 + 5개 거래소 설정
+python signals/score.py --demo            # 시그널 채점 (가짜 시그널·시세)
 ```
 실제 데이터는 `python fetch_data.py`(바이낸스 공개 API, 키 불필요)로 받음.
 

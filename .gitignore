@@ -12,3 +12,7 @@ freqtrade/user_data/backtest_results/
 freqtrade/user_data/kill_switch_state*.json
 freqtrade/config.private.json
 freqtrade/.env
+
+# 텔레그램 시그널: 로그인 정보·세션·수집 데이터는 올리지 않음
+signals/telegram.env
+signals/data/

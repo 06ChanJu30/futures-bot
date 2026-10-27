@@ -1,10 +1,14 @@
 # 작업지시서 — 노트북에서 이어서 하기
 
-마지막 업데이트: 2026-10-16 (v0.6). 바뀐 내용은 `CHANGELOG.md` 참고.
+마지막 업데이트: 2026-10-27 (v0.7). 바뀐 내용은 `CHANGELOG.md` 참고.
 
 ## 지금까지 한 일 (한 줄 요약)
 과거 데이터로 전략 10여 개를 검증 → **일봉 모멘텀 앙상블(10·30·60일)** 하나가 견고성 검사 통과 →
 Freqtrade로 옮겨서 **모의매매 직전 상태**. 거래소 5곳(binance·bybit·okx·bitget·gate) 중 골라서 쓸 수 있음.
+**별도 트랙**: 텔레그램 방 시그널(LevyBot) 따라하기 — 1단계 기록·채점 도구 완성, 데이터 모으는 중.
+
+거래소 조사 결론(10/16): 모의매매는 binance(기본값), 실거래는 binance 1순위·OKX 예비.
+실거래 전 확인: ① 계정에서 USDT 무기한 선물 주문 가능 ② 해외 거래소로 실제 송금 가능 (국내 거래소 출금 제한 강화).
 
 ## 진행 상황
 
@@ -16,6 +20,15 @@ Freqtrade로 옮겨서 **모의매매 직전 상태**. 거래소 5곳(binance·b
 | 4. **노트북 설치 + 실제 데이터 교차 확인** | ⬜ **← 여기부터** |
 | 5. 모의매매 2~3개월 | ⬜ |
 | 6. 실거래 소액 시작 (가능하면 리눅스 VPS) | ⬜ |
+
+**텔레그램 시그널 트랙** (`signals/README.md`)
+
+| 단계 | 상태 |
+|---|---|
+| S1. 기록·채점 도구 | ✅ 완료 (예시 메시지·가짜 시세로 검증) |
+| S2. **과거 대화 가져와서 채점** | ⬜ **← 여기부터** (아래 C-6) |
+| S3. 실시간 기록 3~4주 (60~100건) | ⬜ |
+| S4. 성적 통과 시 Freqtrade 연결 → 모의매매 | ⬜ (아직 안 만듦) |
 
 ---
 
@@ -46,6 +59,7 @@ pip install -r requirements.txt
 | `data/` 폴더 (백테스트용 시세) | `python fetch_data.py` 로 다시 받기 (몇 분) |
 | `freqtrade/config.private.json` | `python setup_secrets.py` 로 새로 만들기 |
 | `freqtrade/user_data/` | 아직 모의매매 전이라 옮길 것 없음 |
+| `signals/telegram.env`, `signals/data/` | 텔레그램 로그인 정보·수집한 시그널. 없으면 다시 작성하고 `--history`로 다시 가져오기 |
 
 ## C. 이어서 할 작업 (순서대로)
 
@@ -80,6 +94,15 @@ docker compose up -d
 ### C-5. 모의매매 점검 (2주마다 권장)
 웹 화면에서 거래 내역·수익 곡선 캡처, 또는 `docker compose logs --tail 200` → Claude에게 보여주고 평가 기준(GUIDE.md 3단계) 체크
 
+### C-6. 텔레그램 시그널 채점 (시그널 트랙)
+```
+python signals/importer.py result.json경로
+python signals/score.py
+```
+- `result.json`: 텔레그램 데스크톱 → 방 → ⋮ → Export chat history (JSON, 사진 제외)
+- 또는 실시간 기록: `signals/telegram.env` 작성 후 `python signals/listen.py --list` → `--history 90` → `python signals/listen.py`
+- `reports/signals_날짜/report.md` 를 Claude에게 보여주고 판단 기준(signals/README.md) 체크
+
 ---
 
 ## D. 노트북에서 Claude와 이어서 작업하는 법
@@ -99,5 +122,6 @@ docker compose up -d
 ## F. 남은 과제 (나중에)
 - [ ] 실거래 시 리눅스 VPS로 이전 (Freqtrade는 Windows+Docker 실거래 비권장)
 - [ ] 텔레그램 알림 연결
+- [ ] 시그널 트랙 S4: listen.py → Freqtrade REST API(forceenter/forceexit) 연결, 레버리지 상한·보호 손절(채점 결과로 결정)·일일 한도, 모멘텀 전략과 자금 분리·반대 포지션 충돌 규칙
 - [ ] 모의매매 결과 vs 백테스트 비교 도구 (같은 기간 신호가 일치하는지 자동 확인)
 - [ ] 주변 설정 민감도 약점 원인 분석 (`reports/*_robustness/report.md` 민감도 표 확인)
