@@ -25,6 +25,7 @@
 | `config.yaml` | fbot 설정 (거래소·비용·리스크·전략 후보) |
 | `freqtrade/` | 실운영: `TsmomEnsemble.py` 전략, `config.json`, `exchanges/*.json`, Docker, `GUIDE.md` |
 | `tools/ft_offline_test.py` | 거래소 접속 없이 5개 거래소 설정으로 Freqtrade 백테스트 (가짜 데이터) |
+| `yuri_bridge/` | 개인 PC의 로컬 컴패니언 **Yuri**가 봇 상태·알림을 읽는 읽기 전용 연결 (`bridge.py` 서버, `yuri_client.py`는 Yuri 쪽에 복사). **조작 기능 추가 금지** — 필요하면 사용자 확인 + 별도 설계 |
 | `signals/` | 텔레그램 시그널: `sigparse.py` 해석, `importer.py` 가져오기, `listen.py` 실시간 기록(Telethon), `score.py` 채점, `config.yaml` |
 | `RESEARCH.md` | 조사 내용·출처 |
 
@@ -45,6 +46,7 @@ pip install freqtrade && python tools/ft_offline_test.py   # Freqtrade 전략 + 
 python signals/score.py --demo            # 시그널 채점 (가짜 시그널·시세)
 python tools/test_levia_sim.py            # 가이드북 규칙 검증 15개
 python signals/levia_sim.py --demo        # LEVIA 시뮬레이션 데모
+python tools/test_yuri_bridge.py          # Yuri 연결 다리 검사 21개
 ```
 실제 데이터는 `python fetch_data.py`(바이낸스 공개 API, 키 불필요)로 받음.
 

@@ -67,3 +67,6 @@ python robustness.py        # 후보 전략 견고성 검사 (다른 종목·주
 ## 별도 트랙: 텔레그램 시그널 따라하기
 
 텔레그램 방의 롱/숏 진입·종료 시그널을 기록하고 '실제로 따라 했으면' 성적을 계산해요 (매매 없음). → [`signals/README.md`](signals/README.md)
+
+## Yuri(로컬 컴패니언) 연결
+개인 PC의 Yuri가 봇 상태를 물어보고 알림을 받을 수 있는 **읽기 전용** 연결: `yuri_bridge/README.md`
